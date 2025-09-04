@@ -71,7 +71,7 @@ export default function EditAnnouncementPage() {
   const params = useParams();
   const id = Number(params.id);
   
-  const [userInfo, setUserInfo] = useState<{ username: string; email: string; role: string } | null>(null);
+  // const [userInfo, setUserInfo] = useState<{ username: string; email: string; role: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     category: '',
@@ -89,7 +89,7 @@ export default function EditAnnouncementPage() {
         router.push('/login');
         return;
       }
-      setUserInfo(user);
+      // setUserInfo(user);
     };
     checkAuth();
   }, [router]);
