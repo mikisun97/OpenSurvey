@@ -1,0 +1,1214 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+import AdminHeader from '@/components/admin/AdminHeader';
+import DynamicSidebar from '@/components/admin/DynamicSidebar';
+import { getUserInfo, isAdmin } from '@/lib/auth';
+import { bbsAPI } from '@/lib/api';
+import { UserInfo, BbsVO, BbsMstVO, CommentVO } from '@/types';
+import { useDeleteBbs } from '@/hooks/useApi';
+import { 
+  Save, 
+  Edit, 
+  ArrowLeft,
+  Eye,
+  Calendar,
+  User,
+  Eye as ViewIcon,
+  MessageSquare,
+  Paperclip,
+  Trash2
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+export default function BoardDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const bbsId = params.bbsId as string;
+  const nttId = params.nttId as string;
+  
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [boardDetail, setBoardDetail] = useState<BbsVO | null>(null);
+  const [boardInfo, setBoardInfo] = useState<BbsMstVO | null>(null);
+  
+  // 댓글 관련 상태
+  const [commentList, setCommentList] = useState<CommentVO[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [addingComment, setAddingComment] = useState(false);
+  const [editingCommentIndex, setEditingCommentIndex] = useState<number | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [updatingComment, setUpdatingComment] = useState(false);
+  const [deletingComment, setDeletingComment] = useState<number | null>(null);
+
+  // 게시물 삭제
+  const deleteBbsMutation = useDeleteBbs();
+
+  // 구분 코드 관련 상태
+  const [categoryDetailCodes, setCategoryDetailCodes] = useState<Array<{value: string, label: string}>>([]);
+  
+  // 대표이미지 모달 상태
+  const [showImageModal, setShowImageModal] = useState(false);
+  
+  // 메인화면이미지 모달 상태
+  const [showMainImageModal, setShowMainImageModal] = useState(false);
+  
+  // 다중이미지 모달 상태
+  const [showMultiImageModal, setShowMultiImageModal] = useState(false);
+  const [selectedMultiImageIndex, setSelectedMultiImageIndex] = useState<number>(0);
+
+  // 권한 체크
+  useEffect(() => {
+    const user = getUserInfo();
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    if (!isAdmin()) {
+      router.push('/surveys');
+      return;
+    }
+
+    setUserInfo(user);
+  }, [router]);
+
+  // 게시판 정보 조회
+  const fetchBoardInfo = async () => {
+    try {
+      const response = await bbsAPI.getBbsMstDetail(bbsId);
+      if (response.data.resultCode === 'SUCCESS') {
+        setBoardInfo(response.data.data);
+        
+        // 게시판에서 구분을 사용하는 경우 구분 코드 상세 정보 로드
+        if (response.data.data.categoryCodeId) {
+          await loadCategoryCodes(response.data.data.categoryCodeId);
+        }
+      } else {
+        console.error('게시판 정보 조회 실패:', response.data.resultMessage);
+        toast.error('게시판 정보를 불러오는데 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('게시판 정보 조회 오류:', error);
+      toast.error('게시판 정보를 불러오는데 실패했습니다.');
+    }
+  };
+
+  // 구분 코드 상세 정보 로드
+  const loadCategoryCodes = async (categoryCodeId: string) => {
+    try {
+      const response = await bbsAPI.getCategoryCodeDetails(categoryCodeId);
+      if (response.data.resultCode === 'SUCCESS') {
+        setCategoryDetailCodes(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('구분 코드 상세 정보 로드 오류:', error);
+    }
+  };
+
+  // 구분 코드를 구분명으로 변환
+  const getCategoryLabel = (categoryCode: string | undefined): string => {
+    if (!categoryCode) return '구분 없음';
+    const category = categoryDetailCodes.find(cat => cat.value === categoryCode);
+    return category ? category.label : categoryCode;
+  };
+
+  // 게시물 상세 조회
+  const fetchBoardDetail = async () => {
+    try {
+      setLoading(true);
+      const response = await bbsAPI.getBbsDetail(bbsId, parseInt(nttId), { incrementView: true });
+      if (response.data.resultCode === 'SUCCESS') {
+        setBoardDetail(response.data.data);
+      } else {
+        console.error('게시물 상세 조회 실패:', response.data.resultMessage);
+        toast.error('게시물 정보를 불러오는데 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('게시물 상세 조회 오류:', error);
+      toast.error('게시물 정보를 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 댓글 목록 조회
+  const fetchCommentList = async () => {
+    try {
+      const response = await bbsAPI.getCommentList(bbsId, parseInt(nttId));
+      if (response.data.resultCode === 'SUCCESS') {
+        // 댓글 목록을 별도 상태로 설정
+        setCommentList(response.data.data || []);
+      } else {
+        console.error('댓글 목록 조회 실패:', response.data.resultMessage);
+      }
+    } catch (error) {
+      console.error('댓글 목록 조회 오류:', error);
+    }
+  };
+
+  // 데이터 조회
+  useEffect(() => {
+    if (userInfo && bbsId && nttId) {
+      fetchBoardInfo();
+      fetchBoardDetail();
+      fetchCommentList();
+    }
+  }, [userInfo, bbsId, nttId]);
+
+  const handleEdit = () => {
+    router.push(`/admin/cms/board/${bbsId}/edit/${nttId}`);
+  };
+
+  const handleDelete = async () => {
+    try {
+      console.log('게시물 삭제 시작:', { bbsId, nttId });
+      const response = await deleteBbsMutation.mutateAsync({ bbsId, nttId: parseInt(nttId) });
+      console.log('게시물 삭제 응답:', response);
+      
+      if (response && response.resultCode === 'SUCCESS') {
+        console.log('게시물 삭제 성공 - 목록으로 이동');
+        toast.success('게시물이 삭제되었습니다.');
+        router.push(`/admin/cms/board/${bbsId}`);
+      } else {
+        console.log('게시물 삭제 실패:', response);
+        toast.error(`게시물 삭제에 실패했습니다: ${response?.resultMessage || '알 수 없는 오류'}`);
+      }
+    } catch (error) {
+      console.error('게시물 삭제 실패:', error);
+      toast.error('게시물 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleBackToList = () => {
+    router.push(`/admin/cms/board/${bbsId}`);
+  };
+
+
+
+  // 파일 다운로드 함수
+  const handleFileDownload = async (atchFileId: string, fileSn: number, fileName: string) => {
+    try {
+      console.log('파일 다운로드 요청:', { atchFileId, fileSn, fileName });
+      
+      // atchFileId에서 공백 제거
+      const cleanAtchFileId = atchFileId.trim();
+      console.log('정리된 atchFileId:', cleanAtchFileId);
+      
+      // 파일 다운로드 API 호출
+      const response = await bbsAPI.downloadFile(cleanAtchFileId, fileSn);
+      
+      // Blob 객체 생성
+      const blob = new Blob([response.data]);
+      
+      // 다운로드 링크 생성 및 클릭
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      
+      // 정리
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('파일 다운로드가 시작되었습니다.');
+      
+    } catch (error) {
+      console.error('파일 다운로드 실패:', error);
+      toast.error('파일 다운로드에 실패했습니다.');
+    }
+  };
+
+  // 대표이미지 다운로드 함수
+  const handleRepresentativeImageDownload = async (imageId: string | undefined, imageName: string | undefined) => {
+    if (!imageId || !imageName) {
+      toast.error('대표이미지 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      console.log('대표이미지 다운로드 요청:', { imageId, imageName });
+      
+      // imageId에서 공백 제거
+      const cleanImageId = imageId.trim();
+      console.log('정리된 imageId:', cleanImageId);
+      
+      // 대표이미지는 일반 파일과 동일한 방식으로 다운로드
+      // imageId를 atchFileId로, fileSn을 1로 가정
+      const response = await bbsAPI.downloadFile(cleanImageId, 1);
+      
+      // Blob 객체 생성
+      const blob = new Blob([response.data]);
+      
+      // 다운로드 링크 생성 및 클릭
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = imageName;
+      document.body.appendChild(link);
+      link.click();
+      
+      // 정리
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('대표이미지 다운로드가 시작되었습니다.');
+      
+    } catch (error) {
+      console.error('대표이미지 다운로드 실패:', error);
+      toast.error('대표이미지 다운로드에 실패했습니다.');
+    }
+  };
+
+  // 메인화면이미지 다운로드 함수
+  const handleMainImageDownload = async (imageId: string | undefined, imageName: string | undefined) => {
+    if (!imageId || !imageName) {
+      toast.error('메인화면이미지 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      console.log('메인화면이미지 다운로드 요청:', { imageId, imageName });
+      
+      // imageId에서 공백 제거
+      const cleanImageId = imageId.trim();
+      console.log('정리된 imageId:', cleanImageId);
+      
+      // 메인화면이미지는 일반 파일과 동일한 방식으로 다운로드
+      // imageId를 atchFileId로, fileSn을 1로 가정
+      const response = await bbsAPI.downloadFile(cleanImageId, 1);
+      
+      // Blob 객체 생성
+      const blob = new Blob([response.data]);
+      
+      // 다운로드 링크 생성 및 클릭
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = imageName;
+      document.body.appendChild(link);
+      link.click();
+      
+      // 정리
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('메인화면이미지 다운로드가 시작되었습니다.');
+      
+    } catch (error) {
+      console.error('메인화면이미지 다운로드 실패:', error);
+      toast.error('메인화면이미지 다운로드에 실패했습니다.');
+    }
+  };
+
+  // 다중이미지 다운로드 함수
+  const handleMultiImageDownload = async (imageId: string | undefined, imageName: string | undefined) => {
+    if (!imageId || !imageName) {
+      toast.error('다중이미지 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      console.log('다중이미지 다운로드 요청:', { imageId, imageName });
+      
+      // imageId에서 공백 제거
+      const cleanImageId = imageId.trim();
+      console.log('정리된 imageId:', cleanImageId);
+      
+      // 다중이미지는 일반 파일과 동일한 방식으로 다운로드
+      // imageId를 atchFileId로, fileSn을 1로 가정
+      const response = await bbsAPI.downloadFile(cleanImageId, 1);
+      
+      // Blob 객체 생성
+      const blob = new Blob([response.data]);
+      
+      // 다운로드 링크 생성 및 클릭
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = imageName;
+      document.body.appendChild(link);
+      link.click();
+      
+      // 정리
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('다중이미지 다운로드가 시작되었습니다.');
+      
+    } catch (error) {
+      console.error('다중이미지 다운로드 실패:', error);
+      toast.error('다중이미지 다운로드에 실패했습니다.');
+    }
+  };
+
+
+
+  // 댓글 관련 함수들
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+
+    try {
+      setAddingComment(true);
+      
+      // 실제 댓글 추가 API 호출
+      const commentData = {
+        nttId: parseInt(nttId),
+        commentCn: newComment.trim(),
+        commentWriterId: userInfo?.userId || 'admin',
+        commentWriterNm: userInfo?.userNm || '관리자',
+        frstRegisterId: userInfo?.userId || 'admin'
+      };
+
+      console.log('댓글 추가 요청:', commentData);
+      
+      const response = await bbsAPI.createComment(bbsId, parseInt(nttId), commentData);
+      
+      if (response.data.resultCode === 'SUCCESS') {
+        // 댓글 추가 성공 후 댓글 목록 새로고침
+        await fetchCommentList();
+        setNewComment('');
+        toast.success('댓글이 추가되었습니다.');
+      } else {
+        console.error('댓글 추가 실패:', response.data.resultMessage);
+        toast.error(`댓글 추가에 실패했습니다: ${response.data.resultMessage}`);
+      }
+    } catch (error) {
+      console.error('댓글 추가 실패:', error);
+      toast.error('댓글 추가에 실패했습니다.');
+    } finally {
+      setAddingComment(false);
+    }
+  };
+
+  const handleEditComment = (comment: CommentVO, index: number) => {
+    setEditingCommentIndex(index);
+    setEditingCommentText(comment.commentCn || '');
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentIndex(null);
+    setEditingCommentText('');
+  };
+
+  const handleUpdateComment = async (commentNo: number | string) => {
+    if (!editingCommentText.trim()) return;
+
+    try {
+      setUpdatingComment(true);
+      
+      // 실제 댓글 수정 API 호출
+      console.log('댓글 수정 요청:', { commentNo, commentCn: editingCommentText });
+
+      const commentData = {
+        nttId: parseInt(nttId),
+        commentCn: editingCommentText.trim(),
+        frstRegisterId: userInfo?.userId || 'admin'
+      };
+
+      const response = await bbsAPI.updateComment(bbsId, parseInt(nttId), Number(commentNo), commentData);
+      
+      if (response.data.resultCode === 'SUCCESS') {
+        // 댓글 수정 성공 후 댓글 목록 새로고침
+        await fetchCommentList();
+        setEditingCommentIndex(null);
+        setEditingCommentText('');
+        toast.success('댓글이 수정되었습니다.');
+      } else {
+        console.error('댓글 수정 실패:', response.data.resultMessage);
+        toast.error(`댓글 수정에 실패했습니다: ${response.data.resultMessage}`);
+      }
+    } catch (error) {
+      console.error('댓글 수정 실패:', error);
+      toast.error('댓글 수정에 실패했습니다.');
+    } finally {
+      setUpdatingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentNo: number | string) => {
+    // 삭제할 댓글 번호 설정
+    setDeletingComment(Number(commentNo));
+  };
+
+  const confirmDeleteComment = async () => {
+    if (!deletingComment) return;
+
+    try {
+      setDeletingComment(null); // 다이얼로그 닫기
+      
+      // 실제 댓글 삭제 API 호출
+      console.log('댓글 삭제 요청:', deletingComment);
+
+      const response = await bbsAPI.deleteComment(bbsId, parseInt(nttId), deletingComment);
+      
+      if (response.data.resultCode === 'SUCCESS') {
+        // 댓글 삭제 성공 후 댓글 목록 새로고침
+        await fetchCommentList();
+        toast.success('댓글이 삭제되었습니다.');
+      } else {
+        console.error('댓글 삭제 실패:', response.data.resultMessage);
+        toast.error(`댓글 삭제에 실패했습니다: ${response.data.resultMessage}`);
+      }
+    } catch (error) {
+      console.error('댓글 삭제 실패:', error);
+      toast.error('댓글 삭제에 실패했습니다.');
+    }
+  };
+
+  const cancelDeleteComment = () => {
+    setDeletingComment(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">게시물을 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!boardDetail) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">게시물을 찾을 수 없습니다.</h1>
+          <Button onClick={handleBackToList}>
+            목록으로 돌아가기
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <AdminHeader />
+      <div className="flex pt-16">
+        <DynamicSidebar />
+        
+        {/* 메인 콘텐츠 - QuickFlow 스타일 */}
+        <main className="ml-72 bg-gray-50 h-[calc(100vh-64px)] w-[calc(100vw-288px)] flex flex-col">
+          {/* 상단 헤더 - 시스템 코드와 동일한 스타일 */}
+          <div className="bg-white border-b border-gray-300 flex-shrink-0">
+            {/* 타이틀 부분 - 시스템 코드와 동일한 UI */}
+            <div className="px-8 py-4 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {boardInfo?.bbsNm || '게시판'} 상세보기
+                  </h1>
+                </div>
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleBackToList}
+                    className="text-sm"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    목록으로
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+                    {/* 메인 콘텐츠 영역 */}
+          <div className="px-8 py-8 flex-1 overflow-y-auto space-y-6">
+            {/* 게시물 상세보기 카드 */}
+            <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
+              <div className="p-6">
+                <div className="space-y-6">
+                  {/* 제목 섹션 */}
+                  <div className="space-y-2">
+                    <Label className="block text-sm font-medium text-gray-700">
+                      제목
+                    </Label>
+                    <div className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+                      {boardDetail.nttSj}
+                    </div>
+                  </div>
+
+                  {/* 게시물 메타 정보 */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="block text-sm font-medium text-gray-700">
+                        작성자
+                      </Label>
+                      <div className="flex items-center space-x-2 text-gray-900">
+                        <User className="w-4 h-4 text-gray-500" />
+                        <span>{boardDetail.ntcrnNm || '-'}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="block text-sm font-medium text-gray-700">
+                        등록일
+                      </Label>
+                      <div className="flex items-center space-x-2 text-gray-900">
+                        <Calendar className="w-4 h-4 text-gray-500" />
+                        <span>
+                          {boardDetail.frstRegistPnttm 
+                            ? new Date(boardDetail.frstRegistPnttm).toLocaleDateString('ko-KR', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : '-'
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 공지여부 및 공개여부 - 한 줄에 배치 */}
+                  <div className="flex space-x-8">
+                    <div className="flex-1 space-y-2">
+                      <Label className="block text-sm font-medium text-gray-700">
+                        공지여부
+                      </Label>
+                      <div className="flex items-center space-x-2">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          boardDetail.ntceAt === 'Y' 
+                            ? 'bg-red-100 text-red-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {boardDetail.ntceAt === 'Y' ? '공지' : '일반'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <Label className="block text-sm font-medium text-gray-700">
+                        공개여부
+                      </Label>
+                      <div className="flex items-center space-x-2">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          boardDetail.exposureYn === 'Y' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {boardDetail.exposureYn === 'Y' ? '공개' : '비공개'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 구분 정보 - 게시판에서 구분을 사용하는 경우에만 표시 */}
+                  {boardInfo?.categoryCodeId && (
+                    <div className="space-y-2">
+                      <Label className="block text-sm font-medium text-gray-700">
+                        구분
+                      </Label>
+                      <div className="flex items-center space-x-2">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {getCategoryLabel(boardDetail.nttCategory)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 조회수 - 별도 줄 */}
+                  <div className="space-y-2">
+                    <Label className="block text-sm font-medium text-gray-700">
+                      조회수
+                    </Label>
+                    <div className="flex items-center space-x-2 text-gray-900">
+                      <ViewIcon className="w-4 h-4 text-gray-500" />
+                      <span>{boardDetail.rdcnt || 0}회</span>
+                    </div>
+                  </div>
+
+                  {/* 대표이미지 정보 - 게시판에서 대표이미지를 사용하는 경우에만 표시 */}
+                  {boardInfo?.representImageUseAt === 'Y' && (
+                    <div className="space-y-2">
+                      <Label className="block text-sm font-medium text-gray-700">
+                        대표이미지
+                        {boardInfo.representImageWidth && boardInfo.representImageHeight && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            (해상도 {boardInfo.representImageWidth} × {boardInfo.representImageHeight}px)
+                          </span>
+                        )}
+                      </Label>
+                      {boardDetail.representImageId && boardDetail.representImageName ? (
+                        <div className="space-y-3">
+                          {/* 대표이미지 미리보기 */}
+                          <div className="border border-gray-200 rounded-lg overflow-hidden inline-block cursor-pointer hover:border-gray-400 transition-colors">
+                            <img 
+                              src={boardDetail.representImageUrl || ''} 
+                              alt="대표이미지"
+                              className="max-h-24 object-contain bg-gray-50"
+                              onClick={() => setShowImageModal(true)}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                            <div className="hidden p-4 text-center text-gray-500 bg-gray-50">
+                              이미지를 불러올 수 없습니다.
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-md border border-gray-200">
+                          등록된 대표이미지가 없습니다.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 메인화면이미지 정보 - 게시판에서 메인화면이미지를 사용하는 경우에만 표시 */}
+                  {boardInfo?.mainImageUseAt === 'Y' && (
+                    <div className="space-y-2">
+                      <Label className="block text-sm font-medium text-gray-700">
+                        메인화면이미지
+                        {boardInfo.mainImageWidth && boardInfo.mainImageHeight && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            (해상도 {boardInfo.mainImageWidth} × {boardInfo.mainImageHeight}px)
+                          </span>
+                        )}
+
+                      </Label>
+                      {boardDetail.mainImageId && boardDetail.mainImageName ? (
+                        <div className="space-y-3">
+                          {/* 메인화면이미지 미리보기 */}
+                          <div className="border border-gray-200 rounded-lg overflow-hidden inline-block cursor-pointer hover:border-gray-400 transition-colors">
+                            <img 
+                              src={boardDetail.mainImageUrl || ''} 
+                              alt="메인화면이미지"
+                              className="max-h-24 object-contain bg-gray-50"
+                              onClick={() => setShowMainImageModal(true)}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                            <div className="hidden p-4 text-center text-gray-500 bg-gray-50">
+                              이미지를 불러올 수 없습니다.
+                            </div>
+                          </div>                          
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-md border border-gray-200">
+                          등록된 메인화면이미지가 없습니다.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 다중이미지 정보 - 게시판에서 다중이미지를 사용하는 경우에만 표시 */}
+                  {boardInfo?.multiImageUseAt === 'Y' && (
+                    <div className="space-y-2">
+                      <Label className="block text-sm font-medium text-gray-700">
+                        {boardInfo.multiImageDisplayName || '다중이미지'}
+                        {boardInfo.multiImageWidth && boardInfo.multiImageHeight && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            (해상도 {boardInfo.multiImageWidth} × {boardInfo.multiImageHeight}px)
+                          </span>
+                        )}
+                      </Label>
+                      {boardDetail.multiImageList && boardDetail.multiImageList.length > 0 ? (
+                        <div className="space-y-3">
+                          {/* 다중이미지 미리보기 그리드 */}
+                          <div className="flex flex-wrap gap-4">
+                            {boardDetail.multiImageList.map((image, index: number) => (
+                              <div key={index} className="relative group">
+                                <div className="border border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-gray-400 transition-colors">
+                                  <img 
+                                    src={image.url || image.fileUrl || ''} 
+                                    alt={`${boardInfo.multiImageDisplayName || '다중이미지'} ${index + 1}`}
+                                    className="max-h-24 object-contain bg-gray-50"
+                                    onClick={() => {
+                                      setSelectedMultiImageIndex(index);
+                                      setShowMultiImageModal(true);
+                                    }}
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      target.nextElementSibling?.classList.remove('hidden');
+                                    }}
+                                  />
+                                  <div className="hidden p-4 text-center text-gray-500 bg-gray-50">
+                                    이미지를 불러올 수 없습니다.
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-md border border-gray-200">
+                          등록된 {boardInfo.multiImageDisplayName || '다중이미지'}가 없습니다.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 내용 섹션 */}
+                  <div className="space-y-2">
+                    <Label className="block text-sm font-medium text-gray-700">
+                      내용
+                    </Label>
+                    <div className="min-h-[200px] p-4 bg-gray-50 rounded-md border border-gray-200">
+                      <div 
+                        className="prose max-w-none text-gray-900"
+                        dangerouslySetInnerHTML={{ 
+                          __html: boardDetail.nttCn || '내용이 없습니다.' 
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 첨부파일 정보 - 게시판 설정에 따라 표시 */}
+                  {boardInfo?.fileAtchPosblAt === 'Y' && (
+                    <div className="space-y-2">
+                      <Label className="block text-sm font-medium text-gray-700">
+                        첨부파일
+                        {boardInfo.atchPosblFileNumber && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            (최대 {boardInfo.atchPosblFileNumber}개)
+                          </span>
+                        )}
+                        {boardInfo.atchPosblFileSize && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            ({Math.round(boardInfo.atchPosblFileSize / 1024 / 1024)}MB 이하)
+                          </span>
+                        )}
+                      </Label>
+                      {boardDetail.fileList && boardDetail.fileList.length > 0 ? (
+                        <>
+                          <div className="flex items-center space-x-2 text-gray-900">
+                            <Paperclip className="w-4 h-4 text-gray-500" />
+                            <span>{boardDetail.fileList.length}개 파일</span>
+                          </div>
+                          <div className="mt-2 space-y-1">
+                            {boardDetail.fileList.map((file, index) => (
+                              <div key={index} className="flex items-center p-2 bg-gray-50 rounded-md border border-gray-200">
+                                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                  <Paperclip className="w-3 h-3" />
+                                  <button
+                                    onClick={() => handleFileDownload(file.atchFileId, file.fileSn, file.orignlFileNm)}
+                                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                  >
+                                    {file.orignlFileNm}
+                                  </button>
+                                  <span className="text-gray-400">({file.fileSize ? Math.round(file.fileSize / 1024) : 0}KB)</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-sm text-gray-500">첨부된 파일이 없습니다.</div>
+                      )}
+                    </div>
+                                    )}
+
+                  {/* 하단 버튼 */}
+                  <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                    <Button
+                      onClick={handleEdit}
+                      className="px-4 py-2 text-sm bg-orange-600 hover:bg-orange-700"
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      수정
+                    </Button>
+                    
+                    {/* 삭제 버튼 추가 */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="px-4 py-2 text-sm text-red-600 hover:text-red-700 border-red-300"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          삭제
+                        </Button>
+                      </AlertDialogTrigger>
+                      
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>게시글 삭제</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            정말 이 게시글을 삭제하시겠습니까? 
+                            삭제된 게시글은 목록에서 보이지 않게 됩니다.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>취소</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={handleDelete}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            삭제
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+
+
+                </div>
+              </div>
+            </div>
+
+            {/* 댓글 카드 - 게시판 설정에 따라 표시 */}
+            {boardInfo?.replyPosblAt === 'Y' && (
+              <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
+                <div className="p-6">
+                  <div className="space-y-4">
+                    <Label className="block text-sm font-medium text-gray-700">
+                      댓글
+                      {commentList && commentList.length > 0 && (
+                        <span className="text-sm text-gray-500 ml-2">
+                          ({commentList.length}개)
+                        </span>
+                      )}
+                    </Label>
+                    
+                    {/* 댓글 작성 폼 */}
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex space-x-3">
+                        <div className="flex-1">
+                          <Textarea
+                            placeholder="댓글을 입력하세요..."
+                            className="min-h-[80px] resize-none"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                          />
+                        </div>
+                        <Button
+                          onClick={handleAddComment}
+                          disabled={!newComment.trim() || addingComment}
+                          size="sm"
+                          className="bg-orange-600 hover:bg-orange-700 text-white"
+                        >
+                          {addingComment ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                              작성 중...
+                            </>
+                          ) : (
+                            <>
+                              <MessageSquare className="w-4 h-4 mr-1" />
+                              댓글 작성
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* 댓글 목록 */}
+                    {commentList && commentList.length > 0 ? (
+                      <div className="space-y-3">
+                        {commentList.map((comment, index) => (
+                          <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <span className="font-medium text-gray-900">
+                                    {comment.commentWriterNm || comment.frstRegisterId || '익명'}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {comment.frstRegistPnttm 
+                                      ? new Date(comment.frstRegistPnttm).toLocaleDateString('ko-KR', {
+                                          year: 'numeric',
+                                          month: 'long',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })
+                                      : '-'
+                                    }
+                                  </span>
+                                </div>
+                                <div className="text-gray-700">
+                                  {comment.commentCn || '내용이 없습니다.'}
+                                </div>
+                              </div>
+                              <div className="flex space-x-2 ml-4">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditComment(comment, index)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteComment(comment.commentNo || index)}
+                                  className="h-8 px-2 text-xs text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            {/* 댓글 수정 폼 */}
+                            {editingCommentIndex === index && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <div className="flex space-x-3">
+                                  <div className="flex-1">
+                                    <Textarea
+                                      value={editingCommentText}
+                                      onChange={(e) => setEditingCommentText(e.target.value)}
+                                      className="min-h-[60px] resize-none"
+                                    />
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button
+                                      onClick={() => handleUpdateComment(comment.commentNo || index)}
+                                      disabled={!editingCommentText.trim() || updatingComment}
+                                      size="sm"
+                                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                                    >
+                                      {updatingComment ? (
+                                        <>
+                                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                                          수정 중...
+                                        </>
+                                      ) : (
+                                        '수정'
+                                      )}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleCancelEditComment()}
+                                    >
+                                      취소
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border border-gray-200">
+                        <MessageSquare className="w-6 h-6 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">아직 등록된 댓글이 없습니다.</p>
+                        <p className="text-xs text-gray-400 mt-1">첫 번째 댓글을 작성해보세요!</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      {/* 댓글 삭제 확인 다이얼로그 */}
+      <AlertDialog open={deletingComment !== null} onOpenChange={() => setDeletingComment(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>댓글 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말 이 댓글을 삭제하시겠습니까? 
+              삭제된 댓글은 복구할 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDeleteComment}>취소</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteComment}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 대표이미지 원본 크기 보기 오버레이 */}
+      {showImageModal && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          onClick={() => setShowImageModal(false)}
+        >
+          <div className="relative max-w-full max-h-full p-4">
+            <img 
+              src={boardDetail?.representImageUrl || ''} 
+              alt="대표이미지 원본"
+              style={{
+                width: boardInfo?.representImageWidth ? `${boardInfo.representImageWidth}px` : 'auto',
+                height: boardInfo?.representImageHeight ? `${boardInfo.representImageHeight}px` : 'auto',
+                objectFit: 'contain',
+                maxWidth: '90vw',
+                maxHeight: '90vh'
+              }}
+              className="cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <div className="hidden p-8 text-center text-gray-500 bg-white rounded">
+              이미지를 불러올 수 없습니다.
+            </div>
+            {/* 닫기 버튼 */}
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="fixed top-4 right-4 w-10 h-10 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black/90 transition-colors z-50"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 메인화면이미지 원본 크기 보기 오버레이 */}
+      {showMainImageModal && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          onClick={() => setShowMainImageModal(false)}
+        >
+          <div className="relative max-w-full max-h-full p-4">
+            <img 
+              src={boardDetail?.mainImageUrl || ''} 
+              alt="메인화면이미지 원본"
+              style={{
+                width: boardInfo?.mainImageWidth ? `${boardInfo.mainImageWidth}px` : 'auto',
+                height: boardInfo?.mainImageHeight ? `${boardInfo.mainImageHeight}px` : 'auto',
+                objectFit: 'contain',
+                maxWidth: '90vw',
+                maxHeight: '90vh'
+              }}
+              className="cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <div className="hidden p-8 text-center text-gray-500 bg-white rounded">
+              이미지를 불러올 수 없습니다.
+            </div>
+            {/* 닫기 버튼 */}
+            <button
+              onClick={() => setShowMainImageModal(false)}
+              className="fixed top-4 right-4 w-10 h-10 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black/90 transition-colors z-50"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 다중이미지 원본 크기 보기 오버레이 */}
+      {showMultiImageModal && boardDetail?.multiImageList && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          onClick={() => setShowMultiImageModal(false)}
+        >
+          <div className="relative max-w-full max-h-full p-4">
+            <img 
+              src={boardDetail.multiImageList[selectedMultiImageIndex]?.url || boardDetail.multiImageList[selectedMultiImageIndex]?.fileUrl || ''} 
+              alt={`${boardInfo?.multiImageDisplayName || '다중이미지'} ${selectedMultiImageIndex + 1}`}
+              style={{
+                width: boardInfo?.multiImageWidth ? `${boardInfo.multiImageWidth}px` : 'auto',
+                height: boardInfo?.multiImageHeight ? `${boardInfo.multiImageHeight}px` : 'auto',
+                objectFit: 'contain',
+                maxWidth: '90vw',
+                maxHeight: '90vh'
+              }}
+              className="cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <div className="hidden p-8 text-center text-gray-500 bg-white rounded">
+              이미지를 불러올 수 없습니다.
+            </div>
+            
+            {/* 이전/다음 버튼 */}
+            {boardDetail.multiImageList.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedMultiImageIndex(prev => 
+                      prev > 0 ? prev - 1 : boardDetail.multiImageList!.length - 1
+                    );
+                  }}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black/90 transition-colors z-50"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedMultiImageIndex(prev => 
+                      prev < boardDetail.multiImageList!.length - 1 ? prev + 1 : 0
+                    );
+                  }}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black/90 transition-colors z-50"
+                >
+                  ›
+                </button>
+              </>
+            )}
+            
+            {/* 이미지 카운터 */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+              {selectedMultiImageIndex + 1} / {boardDetail.multiImageList.length}
+            </div>
+            
+            {/* 닫기 버튼 */}
+            <button
+              onClick={() => setShowMultiImageModal(false)}
+              className="fixed top-4 right-4 w-10 h-10 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black/90 transition-colors z-50"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+} 

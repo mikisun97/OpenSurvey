@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="egovframework.survey.mapper.FileMapper">
+
+    <!-- 첨부파일 ResultMap (전자정부 프레임워크 표준) -->
+    <resultMap id="fileResultMap" type="egovframework.survey.vo.FileVO">
+        <id property="atchFileId" column="ATCH_FILE_ID"/>
+        <id property="fileSn" column="FILE_SN"/>
+        <result property="fileStreCours" column="FILE_STRE_COURS"/>
+        <result property="streFileNm" column="STRE_FILE_NM"/>
+        <result property="orignlFileNm" column="ORIGNL_FILE_NM"/>
+        <result property="fileExtsn" column="FILE_EXTSN"/>
+        <result property="fileCn" column="FILE_CN"/>
+        <result property="fileSize" column="FILE_SIZE"/>
+        <result property="fileOrder" column="FILE_ORDER"/>
+        <result property="creatDt" column="CREAT_DT"/>
+        <result property="useAt" column="USE_AT"/>
+    </resultMap>
+
+    <!-- 첨부파일 목록 조회 (COMTNFILE + COMTNFILEDETAIL 조인) -->
+    <select id="selectFileList" parameterType="string" resultMap="fileResultMap">
+        SELECT 
+            f.ATCH_FILE_ID,
+            fd.FILE_SN,
+            fd.FILE_STRE_COURS,
+            fd.STRE_FILE_NM,
+            fd.ORIGNL_FILE_NM,
+            fd.FILE_EXTSN,
+            fd.FILE_CN,
+            fd.FILE_SIZE,
+            fd.FILE_ORDER,
+            f.CREAT_DT,
+            f.USE_AT
+        FROM COMTNFILE f
+        INNER JOIN COMTNFILEDETAIL fd ON f.ATCH_FILE_ID = fd.ATCH_FILE_ID
+        WHERE f.ATCH_FILE_ID = #{atchFileId}
+        AND f.USE_AT = 'Y'
+        ORDER BY fd.FILE_ORDER, fd.FILE_SN
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+
+    <!-- 첨부파일 상세 조회 (COMTNFILE + COMTNFILEDETAIL 조인) -->
+    <select id="selectFileDetail" resultMap="fileResultMap">
+        SELECT 
+            f.ATCH_FILE_ID,
+            fd.FILE_SN,
+            fd.FILE_STRE_COURS,
+            fd.STRE_FILE_NM,
+            fd.ORIGNL_FILE_NM,
+            fd.FILE_EXTSN,
+            fd.FILE_CN,
+            fd.FILE_SIZE,
+            fd.FILE_ORDER,
+            f.CREAT_DT,
+            f.USE_AT
+        FROM COMTNFILE f
+        INNER JOIN COMTNFILEDETAIL fd ON f.ATCH_FILE_ID = fd.ATCH_FILE_ID
+        WHERE f.ATCH_FILE_ID = #{atchFileId}
+        AND fd.FILE_SN = #{fileSn}
+        AND f.USE_AT = 'Y'
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+
+    <!-- 첨부파일 등록 (COMTNFILE + COMTNFILEDETAIL) -->
+    <insert id="insertFile" parameterType="egovframework.survey.vo.FileVO">
+        <!-- COMTNFILE 마스터 테이블에 먼저 등록 -->
+        INSERT INTO COMTNFILE (
+            ATCH_FILE_ID,
+            CREAT_DT,
+            USE_AT
+        ) VALUES (
+            #{atchFileId},
+            CURRENT_TIMESTAMP,
+            'Y'
+        )
+    </insert>
+    
+    <!-- COMTNFILEDETAIL 상세 테이블에 등록 -->
+    <insert id="insertFileDetail" parameterType="egovframework.survey.vo.FileVO">
+        INSERT INTO COMTNFILEDETAIL (
+            ATCH_FILE_ID,
+            FILE_SN,
+            FILE_STRE_COURS,
+            STRE_FILE_NM,
+            ORIGNL_FILE_NM,
+            FILE_EXTSN,
+            FILE_CN,
+            FILE_SIZE
+        ) VALUES (
+            #{atchFileId},
+            #{fileSn},
+            #{fileStreCours},
+            #{streFileNm},
+            #{orignlFileNm},
+            #{fileExtsn},
+            #{fileCn},
+            #{fileSize}
+        )
+    </insert>
+
+    <!-- 첨부파일 삭제 (COMTNFILEDETAIL에서만 삭제) -->
+    <delete id="deleteFile">
+        DELETE FROM COMTNFILEDETAIL 
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </delete>
+
+    <!-- 첨부파일 전체 삭제 (COMTNFILE + COMTNFILEDETAIL) -->
+    <delete id="deleteFileAll" parameterType="string">
+        <!-- COMTNFILEDETAIL 먼저 삭제 -->
+        DELETE FROM COMTNFILEDETAIL 
+        WHERE ATCH_FILE_ID = #{atchFileId}
+    </delete>
+    
+    <!-- COMTNFILE 마스터 삭제 -->
+    <delete id="deleteFileMaster" parameterType="string">
+        DELETE FROM COMTNFILE 
+        WHERE ATCH_FILE_ID = #{atchFileId}
+    </delete>
+
+    <!-- 첨부파일ID로 다음 파일순번 조회 (COMTNFILEDETAIL에서 조회) -->
+    <select id="selectNextFileSn" parameterType="string" resultType="long">
+        SELECT COALESCE(MAX(FILE_SN), 0) + 1
+        FROM COMTNFILEDETAIL
+        WHERE ATCH_FILE_ID = #{atchFileId}
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+
+    <!-- 첨부파일ID로 파일 개수 조회 (COMTNFILEDETAIL에서 조회) -->
+    <select id="selectFileCount" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNFILEDETAIL
+        WHERE ATCH_FILE_ID = #{atchFileId}
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+    
+    <!-- 게시물 내용에서 사용되는 이미지 목록 조회 (COMTNFILEDETAIL에서 조회) -->
+    <select id="selectContentImages" parameterType="string" resultMap="fileResultMap">
+        SELECT 
+            f.ATCH_FILE_ID,
+            fd.FILE_SN,
+            fd.FILE_STRE_COURS,
+            fd.STRE_FILE_NM,
+            fd.ORIGNL_FILE_NM,
+            fd.FILE_EXTSN,
+            fd.FILE_CN,
+            fd.FILE_SIZE,
+            fd.FILE_ORDER,
+            f.CREAT_DT,
+            f.USE_AT
+        FROM COMTNFILE f
+        INNER JOIN COMTNFILEDETAIL fd ON f.ATCH_FILE_ID = fd.ATCH_FILE_ID
+        WHERE f.ATCH_FILE_ID = #{atchFileId}
+        AND fd.FILE_CN = 'CONTENT_IMAGE'
+        AND f.USE_AT = 'Y'
+        ORDER BY fd.FILE_ORDER, fd.FILE_SN
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+    
+    <!-- 첨부파일로만 사용되는 파일 목록 조회 (대표이미지, 메인이미지, 다중이미지 제외) -->
+    <select id="selectAttachmentFiles" parameterType="string" resultMap="fileResultMap">
+        SELECT 
+            f.ATCH_FILE_ID,
+            fd.FILE_SN,
+            fd.FILE_STRE_COURS,
+            fd.STRE_FILE_NM,
+            fd.ORIGNL_FILE_NM,
+            fd.FILE_EXTSN,
+            fd.FILE_CN,
+            fd.FILE_SIZE,
+            fd.FILE_ORDER,
+            f.CREAT_DT,
+            f.USE_AT
+        FROM COMTNFILE f
+        INNER JOIN COMTNFILEDETAIL fd ON f.ATCH_FILE_ID = fd.ATCH_FILE_ID
+        WHERE f.ATCH_FILE_ID = #{atchFileId}
+        AND fd.FILE_CN NOT IN ('REPRESENTATIVE', 'MAIN_IMAGE', 'MULTI_IMAGE', 'CONTENT_IMAGE')
+        AND f.USE_AT = 'Y'
+        ORDER BY fd.FILE_ORDER, fd.FILE_SN
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+    
+    <!-- 첨부파일 마스터 정보 조회 (COMTNFILE) -->
+    <select id="selectFileMaster" parameterType="string" resultMap="fileResultMap">
+        SELECT 
+            ATCH_FILE_ID,
+            CREAT_DT,
+            USE_AT
+        FROM COMTNFILE
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND USE_AT = 'Y'
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+    
+    <!-- 첨부파일 마스터 존재 여부 확인 (COMTNFILE) -->
+    <select id="existsFileMaster" parameterType="string" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1 FROM COMTNFILE 
+            WHERE ATCH_FILE_ID = #{atchFileId}
+            AND USE_AT = 'Y'
+        )
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+    
+    <!-- 첨부파일 마스터 등록 (COMTNFILE) -->
+    <insert id="insertFileMaster" parameterType="egovframework.survey.vo.FileVO">
+        INSERT INTO COMTNFILE (
+            ATCH_FILE_ID,
+            CREAT_DT,
+            USE_AT
+        ) VALUES (
+            #{atchFileId},
+            CURRENT_TIMESTAMP,
+            'Y'
+        )
+    </insert>
+    
+    <!-- 첨부파일 마스터 수정 (COMTNFILE) -->
+    <update id="updateFileMaster" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILE SET
+            USE_AT = COALESCE(#{useAt}, USE_AT)
+        WHERE ATCH_FILE_ID = #{atchFileId}
+    </update>
+    
+
+    
+    <!-- 대표이미지 조회 -->
+    <select id="selectRepresentativeImage" parameterType="string" resultMap="fileResultMap">
+        SELECT 
+            f.ATCH_FILE_ID,
+            fd.FILE_SN,
+            fd.FILE_STRE_COURS,
+            fd.STRE_FILE_NM,
+            fd.ORIGNL_FILE_NM,
+            fd.FILE_EXTSN,
+            fd.FILE_CN,
+            fd.FILE_SIZE,
+            fd.FILE_ORDER,
+            f.CREAT_DT,
+            f.USE_AT
+        FROM COMTNFILE f
+        INNER JOIN COMTNFILEDETAIL fd ON f.ATCH_FILE_ID = fd.ATCH_FILE_ID
+        WHERE f.ATCH_FILE_ID = #{atchFileId}
+        AND fd.FILE_CN = 'REPRESENTATIVE'
+        AND f.USE_AT = 'Y'
+        ORDER BY fd.FILE_ORDER, fd.FILE_SN
+        LIMIT 1
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+    
+    <!-- 메인이미지 조회 -->
+    <select id="selectMainImage" parameterType="string" resultMap="fileResultMap">
+        SELECT 
+            f.ATCH_FILE_ID,
+            fd.FILE_SN,
+            fd.FILE_STRE_COURS,
+            fd.STRE_FILE_NM,
+            fd.ORIGNL_FILE_NM,
+            fd.FILE_EXTSN,
+            fd.FILE_CN,
+            fd.FILE_SIZE,
+            fd.FILE_ORDER,
+            f.CREAT_DT,
+            f.USE_AT
+        FROM COMTNFILE f
+        INNER JOIN COMTNFILEDETAIL fd ON f.ATCH_FILE_ID = fd.ATCH_FILE_ID
+        WHERE f.ATCH_FILE_ID = #{atchFileId}
+        AND fd.FILE_CN = 'MAIN_IMAGE'
+        AND f.USE_AT = 'Y'
+        ORDER BY fd.FILE_ORDER, fd.FILE_SN
+        LIMIT 1
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+    
+    <!-- 다중이미지 목록 조회 -->
+    <select id="selectMultiImages" parameterType="string" resultMap="fileResultMap">
+        SELECT 
+            f.ATCH_FILE_ID,
+            fd.FILE_SN,
+            fd.FILE_STRE_COURS,
+            fd.STRE_FILE_NM,
+            fd.ORIGNL_FILE_NM,
+            fd.FILE_EXTSN,
+            fd.FILE_CN,
+            fd.FILE_SIZE,
+            fd.FILE_ORDER,
+            f.CREAT_DT,
+            f.USE_AT
+        FROM COMTNFILE f
+        INNER JOIN COMTNFILEDETAIL fd ON f.ATCH_FILE_ID = fd.ATCH_FILE_ID
+        WHERE f.ATCH_FILE_ID = #{atchFileId}
+        AND fd.FILE_CN = 'MULTI_IMAGE'
+        AND f.USE_AT = 'Y'
+        ORDER BY fd.FILE_ORDER, fd.FILE_SN
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+    
+    <!-- 특정 타입의 이미지 삭제 -->
+    <delete id="deleteImageByType">
+        DELETE FROM COMTNFILEDETAIL 
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_CN = #{fileCn}
+    </delete>
+    
+    <!-- 대표이미지 수정 (기존 파일 정보 업데이트) -->
+    <update id="updateRepresentativeImage" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL SET
+            FILE_STRE_COURS = #{fileStreCours},
+            STRE_FILE_NM = #{streFileNm},
+            ORIGNL_FILE_NM = #{orignlFileNm},
+            FILE_EXTSN = #{fileExtsn},
+            FILE_SIZE = #{fileSize}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_CN = 'REPRESENTATIVE'
+        AND FILE_SN = #{fileSn}
+    </update>
+    
+    <!-- 특정 타입의 이미지가 존재하는지 확인 -->
+    <select id="existsImageByType" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1 FROM COMTNFILEDETAIL 
+            WHERE ATCH_FILE_ID = #{atchFileId}
+            AND FILE_CN = #{fileCn}
+        )
+    </select>
+    
+    <!-- 파일 순서 업데이트 -->
+    <update id="updateFileOrder" parameterType="egovframework.survey.vo.FileVO">
+        UPDATE COMTNFILEDETAIL 
+        SET FILE_ORDER = #{fileOrder}
+        WHERE ATCH_FILE_ID = #{atchFileId}
+        AND FILE_SN = #{fileSn}
+    </update>
+    
+</mapper> 

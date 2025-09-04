@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="egovframework.survey.mapper.CommonCodeMapper">
+    
+    <!-- 공통코드 그룹 목록 조회 -->
+    <select id="selectCommonCodeList" parameterType="egovframework.survey.vo.CommonCodeSearchVO" resultType="egovframework.survey.vo.CommonCodeVO">
+        SELECT
+            CODE_ID,
+            CODE_ID_NM,
+            CODE_ID_DC,
+            USE_AT,
+            CL_CODE,
+            CODE_ORDER,
+            FRST_REGIST_PNTTM,
+            FRST_REGISTER_ID,
+            LAST_UPDT_PNTTM,
+            LAST_UPDUSR_ID
+        FROM COMTCCMMNCODE
+        WHERE 1=1
+        <if test="searchKeyword != null and searchKeyword != ''">
+            <choose>
+                <when test="searchCondition == 'codeId'">
+                    AND LOWER(CODE_ID) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                </when>
+                <when test="searchCondition == 'codeIdNm'">
+                    AND LOWER(CODE_ID_NM) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                </when>
+                <when test="searchCondition == 'codeIdDc'">
+                    AND LOWER(CODE_ID_DC) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                </when>
+                <otherwise>
+                    AND (LOWER(CODE_ID) LIKE '%' || LOWER(#{searchKeyword}) || '%' OR LOWER(CODE_ID_NM) LIKE '%' || LOWER(#{searchKeyword}) || '%')
+                </otherwise>
+            </choose>
+        </if>
+        <if test="searchUseAt != null and searchUseAt != '' and searchUseAt != 'ALL'">
+            AND USE_AT = #{searchUseAt}
+        </if>
+        <if test="searchClCode != null and searchClCode != ''">
+            AND CL_CODE = #{searchClCode}
+        </if>
+        ORDER BY 
+            <choose>
+                <when test="sortField == 'CODE_ID'">CODE_ID</when>
+                <when test="sortField == 'CODE_ID_NM'">CODE_ID_NM</when>
+                <when test="sortField == 'USE_AT'">USE_AT</when>
+                <when test="sortField == 'FRST_REGIST_PNTTM'">FRST_REGIST_PNTTM</when>
+                <otherwise>CODE_ORDER, CODE_ID</otherwise>
+            </choose>
+            <if test="sortOrder == 'DESC'">DESC</if>
+            <if test="sortOrder == 'ASC'">ASC</if>
+        LIMIT #{pageSize} OFFSET #{pageIndex}
+    </select>
+    
+    <!-- 공통코드 그룹 목록 총 개수 조회 -->
+    <select id="selectCommonCodeListTotCnt" parameterType="egovframework.survey.vo.CommonCodeSearchVO" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTCCMMNCODE
+        WHERE 1=1
+        <if test="searchKeyword != null and searchKeyword != ''">
+            <choose>
+                <when test="searchCondition == 'codeId'">
+                    AND LOWER(CODE_ID) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                </when>
+                <when test="searchCondition == 'codeIdNm'">
+                    AND LOWER(CODE_ID_NM) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                </when>
+                <when test="searchCondition == 'codeIdDc'">
+                    AND LOWER(CODE_ID_DC) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                </when>
+                <otherwise>
+                    AND (LOWER(CODE_ID) LIKE '%' || LOWER(#{searchKeyword}) || '%' OR LOWER(CODE_ID_NM) LIKE '%' || LOWER(#{searchKeyword}) || '%')
+                </otherwise>
+            </choose>
+        </if>
+        <if test="searchUseAt != null and searchUseAt != '' and searchUseAt != 'ALL'">
+            AND USE_AT = #{searchUseAt}
+        </if>
+        <if test="searchClCode != null and searchClCode != ''">
+            AND CL_CODE = #{searchClCode}
+        </if>
+    </select>
+    
+    <!-- 공통코드 그룹 상세 조회 -->
+    <select id="selectCommonCode" parameterType="string" resultType="egovframework.survey.vo.CommonCodeVO">
+        SELECT
+            CODE_ID,
+            CODE_ID_NM,
+            CODE_ID_DC,
+            USE_AT,
+            CL_CODE,
+            CODE_ORDER,
+            FRST_REGIST_PNTTM,
+            FRST_REGISTER_ID,
+            LAST_UPDT_PNTTM,
+            LAST_UPDUSR_ID
+        FROM COMTCCMMNCODE
+        WHERE CODE_ID = #{codeId}
+    </select>
+    
+    <!-- 공통코드 그룹 등록 -->
+    <insert id="insertCommonCode" parameterType="egovframework.survey.vo.CommonCodeVO">
+        INSERT INTO COMTCCMMNCODE (
+            CODE_ID,
+            CODE_ID_NM,
+            CODE_ID_DC,
+            USE_AT,
+            CL_CODE,
+            CODE_ORDER,
+            FRST_REGIST_PNTTM,
+            FRST_REGISTER_ID
+        ) VALUES (
+            #{codeId},
+            #{codeIdNm},
+            #{codeIdDc},
+            #{useAt},
+            #{clCode},
+            #{codeOrder},
+            CURRENT_TIMESTAMP,
+            #{frstRegisterId}
+        )
+    </insert>
+    
+    <!-- 공통코드 그룹 수정 -->
+    <update id="updateCommonCode" parameterType="egovframework.survey.vo.CommonCodeVO">
+        UPDATE COMTCCMMNCODE SET
+            CODE_ID_NM = #{codeIdNm},
+            CODE_ID_DC = #{codeIdDc},
+            USE_AT = #{useAt},
+            CL_CODE = #{clCode},
+            CODE_ORDER = #{codeOrder},
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP,
+            LAST_UPDUSR_ID = #{lastUpdusrId}
+        WHERE CODE_ID = #{codeId}
+    </update>
+    
+    <!-- 공통코드 그룹 삭제 -->
+    <delete id="deleteCommonCode" parameterType="string">
+        DELETE FROM COMTCCMMNCODE
+        WHERE CODE_ID = #{codeId}
+    </delete>
+    
+    <!-- 공통코드 상세 목록 조회 -->
+    <select id="selectCommonCodeDetailList" resultType="egovframework.survey.vo.CommonCodeDetailVO">
+        SELECT
+            CODE_ID,
+            CODE,
+            CODE_NM,
+            CODE_DC,
+            USE_AT,
+            CODE_ORDER,
+            FRST_REGIST_PNTTM,
+            FRST_REGISTER_ID,
+            LAST_UPDT_PNTTM,
+            LAST_UPDUSR_ID
+        FROM COMTCCMMNDETAILCODE
+        WHERE 1=1
+        AND CODE_ID = #{param1}
+        <if test="param2.searchKeyword != null and param2.searchKeyword != ''">
+            <choose>
+                <when test="param2.searchCondition == 'code'">
+                    AND CODE LIKE '%' || #{param2.searchKeyword} || '%'
+                </when>
+                <when test="param2.searchCondition == 'codeNm'">
+                    AND CODE_NM LIKE '%' || #{param2.searchKeyword} || '%'
+                </when>
+            </choose>
+        </if>
+        <if test="param2.searchUseAt != null and param2.searchUseAt != '' and param2.searchUseAt != 'ALL'">
+            AND USE_AT = #{param2.searchUseAt}
+        </if>
+        ORDER BY 
+            <choose>
+                <when test="param2.sortField == 'CODE'">CODE</when>
+                <when test="param2.sortField == 'CODE_NM'">CODE_NM</when>
+                <when test="param2.sortField == 'CODE_ORDER'">CODE_ORDER</when>
+                <when test="param2.sortField == 'USE_AT'">USE_AT</when>
+                <when test="param2.sortField == 'FRST_REGIST_PNTTM'">FRST_REGIST_PNTTM</when>
+                <otherwise>CODE_ORDER, CODE</otherwise>
+            </choose>
+            <if test="param2.sortOrder == 'DESC'">DESC</if>
+            <if test="param2.sortOrder == 'ASC'">ASC</if>
+        LIMIT #{param2.pageSize} OFFSET #{param2.pageIndex}
+    </select>
+    
+    <!-- 공통코드 상세 목록 총 개수 조회 -->
+    <select id="selectCommonCodeDetailListTotCnt" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTCCMMNDETAILCODE
+        WHERE 1=1
+        AND CODE_ID = #{param1}
+        <if test="param2.searchKeyword != null and param2.searchKeyword != ''">
+            <choose>
+                <when test="param2.searchCondition == 'code'">
+                    AND CODE LIKE '%' || #{param2.searchKeyword} || '%'
+                </when>
+                <when test="param2.searchCondition == 'codeNm'">
+                    AND CODE_NM LIKE '%' || #{param2.searchKeyword} || '%'
+                </when>
+            </choose>
+        </if>
+        <if test="param2.searchUseAt != null and param2.searchUseAt != '' and param2.searchUseAt != 'ALL'">
+            AND USE_AT = #{param2.searchUseAt}
+        </if>
+    </select>
+    
+    <!-- 공통코드 상세 조회 -->
+    <select id="selectCommonCodeDetail" resultType="egovframework.survey.vo.CommonCodeDetailVO">
+        SELECT
+            CODE_ID,
+            CODE,
+            CODE_NM,
+            CODE_DC,
+            USE_AT,
+            CODE_ORDER,
+            FRST_REGIST_PNTTM,
+            FRST_REGISTER_ID,
+            LAST_UPDT_PNTTM,
+            LAST_UPDUSR_ID
+        FROM COMTCCMMNDETAILCODE
+        WHERE CODE_ID = #{codeId} AND CODE = #{code}
+    </select>
+    
+    <!-- 공통코드 상세 등록 -->
+    <insert id="insertCommonCodeDetail" parameterType="egovframework.survey.vo.CommonCodeDetailVO">
+        INSERT INTO COMTCCMMNDETAILCODE (
+            CODE_ID,
+            CODE,
+            CODE_NM,
+            CODE_DC,
+            USE_AT,
+            CODE_ORDER,
+            FRST_REGIST_PNTTM,
+            FRST_REGISTER_ID,
+            LAST_UPDT_PNTTM,
+            LAST_UPDUSR_ID
+        ) VALUES (
+            #{codeId,jdbcType=VARCHAR},
+            #{code,jdbcType=VARCHAR},
+            #{codeNm,jdbcType=VARCHAR},
+            #{codeDc,jdbcType=VARCHAR},
+            #{useAt,jdbcType=VARCHAR},
+            #{codeOrder,jdbcType=INTEGER},
+            CURRENT_TIMESTAMP,
+            #{frstRegisterId,jdbcType=VARCHAR},
+            CURRENT_TIMESTAMP,
+            #{lastUpdusrId,jdbcType=VARCHAR}
+        )
+    </insert>
+    
+    <!-- 공통코드 상세 수정 -->
+    <update id="updateCommonCodeDetail" parameterType="egovframework.survey.vo.CommonCodeDetailVO">
+        UPDATE COMTCCMMNDETAILCODE SET
+            CODE_NM = #{codeNm,jdbcType=VARCHAR},
+            CODE_DC = #{codeDc,jdbcType=VARCHAR},
+            USE_AT = #{useAt,jdbcType=VARCHAR},
+            CODE_ORDER = #{codeOrder,jdbcType=INTEGER},
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP,
+            LAST_UPDUSR_ID = #{lastUpdusrId,jdbcType=VARCHAR}
+        WHERE CODE_ID = #{codeId,jdbcType=VARCHAR} AND CODE = #{code,jdbcType=VARCHAR}
+    </update>
+    
+    <!-- 공통코드 상세 삭제 -->
+    <delete id="deleteCommonCodeDetail">
+        DELETE FROM COMTCCMMNDETAILCODE
+        WHERE CODE_ID = #{codeId} AND CODE = #{code}
+    </delete>
+    
+</mapper> 

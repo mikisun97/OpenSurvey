@@ -1,0 +1,581 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="egovframework.survey.mapper.BbsMapper">
+
+    <!-- 게시판 마스터 ResultMap -->
+    <resultMap id="bbsMstResultMap" type="egovframework.survey.vo.BbsMstVO">
+        <id property="bbsId" column="BBS_ID"/>
+        <result property="bbsNm" column="BBS_NM"/>
+        <result property="bbsIntrcn" column="BBS_INTRCN"/>
+        <result property="bbsTyCode" column="BBS_TY_CODE"/>
+        <result property="bbsAttrbCode" column="BBS_ATTRB_CODE"/>
+        <result property="replyPosblAt" column="REPLY_POSBL_AT"/>
+        <result property="fileAtchPosblAt" column="FILE_ATCH_POSBL_AT"/>
+        <result property="atchPosblFileNumber" column="ATCH_POSBL_FILE_NUMBER"/>
+        <result property="atchPosblFileSize" column="ATCH_POSBL_FILE_SIZE"/>
+        <result property="useAt" column="USE_AT"/>
+        <result property="tmplatId" column="TMPLAT_ID"/>
+        <result property="categoryCodeId" column="CATEGORY_CODE_ID"/>
+        
+        <!-- 이미지 관련 컬럼들 -->
+        <result property="representImageUseAt" column="REPRESENT_IMAGE_USE_AT"/>
+        <result property="representImageWidth" column="REPRESENT_IMAGE_WIDTH"/>
+        <result property="representImageHeight" column="REPRESENT_IMAGE_HEIGHT"/>
+        <result property="mainImageUseAt" column="MAIN_IMAGE_USE_AT"/>
+        <result property="mainImageWidth" column="MAIN_IMAGE_WIDTH"/>
+        <result property="mainImageHeight" column="MAIN_IMAGE_HEIGHT"/>
+        <result property="multiImageUseAt" column="MULTI_IMAGE_USE_AT"/>
+        <result property="multiImageDisplayName" column="MULTI_IMAGE_DISPLAY_NAME"/>
+        <result property="multiImageMaxCount" column="MULTI_IMAGE_MAX_COUNT"/>
+        <result property="multiImageWidth" column="MULTI_IMAGE_WIDTH"/>
+        <result property="multiImageHeight" column="MULTI_IMAGE_HEIGHT"/>
+        
+        <result property="frstRegisterId" column="FRST_REGISTER_ID"/>
+        <result property="frstRegistPnttm" column="FRST_REGIST_PNTTM"/>
+        <result property="lastUpdusrId" column="LAST_UPDUSR_ID"/>
+        <result property="lastUpdtPnttm" column="LAST_UPDT_PNTTM"/>
+    </resultMap>
+
+    <!-- 게시글 ResultMap -->
+    <resultMap id="bbsResultMap" type="egovframework.survey.vo.BbsVO">
+        <id property="nttId" column="NTT_ID"/>
+        <result property="bbsId" column="BBS_ID"/>
+        <result property="nttNo" column="NTT_NO"/>
+        <result property="nttSj" column="NTT_SJ"/>
+        <result property="nttCn" column="NTT_CN"/>
+        <result property="answerAt" column="ANSWER_AT"/>
+        <result property="parntscttNo" column="PARNTSCTT_NO"/>
+        <result property="answerLc" column="ANSWER_LC"/>
+        <result property="sortOrdr" column="SORT_ORDR"/>
+        <result property="rdcnt" column="RDCNT"/>
+        <result property="useAt" column="USE_AT"/>
+        <result property="ntceAt" column="NTCE_AT"/>
+        <result property="exposureYn" column="EXPOSURE_YN"/>
+        <result property="atchFileId" column="ATCH_FILE_ID"/>
+        <result property="nttCategory" column="CATEGORY_CODE"/>
+        <result property="frstRegisterId" column="FRST_REGISTER_ID"/>
+        <result property="ntcrnNm" column="NTCRN_NM"/>
+        <result property="password" column="PASSWORD"/>
+        <result property="frstRegistPnttm" column="FRST_REGIST_PNTTM"/>
+        <result property="lastUpdusrId" column="LAST_UPDUSR_ID"/>
+        <result property="lastUpdtPnttm" column="LAST_UPDT_PNTTM"/>
+        
+        <!-- 조인용 필드 -->
+        <result property="bbsNm" column="BBS_NM"/>
+        <result property="bbsTyCode" column="BBS_TY_CODE"/>
+    </resultMap>
+
+    <!-- 댓글 ResultMap -->
+    <resultMap id="commentResultMap" type="egovframework.survey.vo.CommentVO">
+        <id property="commentNo" column="COMMENT_NO"/>
+        <result property="nttId" column="NTT_ID"/>
+        <result property="commentCn" column="COMMENT_CN"/>
+        <result property="commentWriterId" column="COMMENT_WRITER_ID"/>
+        <result property="commentWriterNm" column="COMMENT_WRITER_NM"/>
+        <result property="commentPassword" column="COMMENT_PASSWORD"/>
+        <result property="useAt" column="USE_AT"/>
+        <result property="frstRegisterId" column="FRST_REGISTER_ID"/>
+        <result property="frstRegistPnttm" column="FRST_REGIST_PNTTM"/>
+        <result property="lastUpdusrId" column="LAST_UPDUSR_ID"/>
+        <result property="lastUpdtPnttm" column="LAST_UPDT_PNTTM"/>
+    </resultMap>
+
+    <!-- ===== 게시판 마스터 관리 ===== -->
+
+    <!-- 게시판 마스터 목록 조회 -->
+    <select id="selectBbsMstList" parameterType="egovframework.survey.vo.BbsMstSearchVO" resultMap="bbsMstResultMap">
+        SELECT 
+            BBS_ID,
+            BBS_NM,
+            BBS_INTRCN,
+            BBS_TY_CODE,
+            BBS_ATTRB_CODE,
+            REPLY_POSBL_AT,
+            FILE_ATCH_POSBL_AT,
+            ATCH_POSBL_FILE_NUMBER,
+            ATCH_POSBL_FILE_SIZE,
+            USE_AT,
+            TMPLAT_ID,
+            CATEGORY_CODE_ID,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_PNTTM
+        FROM COMTNBBSMST
+        WHERE 1 = 1
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (BBS_NM LIKE CONCAT('%', #{searchKeyword}, '%') 
+                 OR BBS_INTRCN LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        <if test="searchUseAt != null and searchUseAt != '' and searchUseAt != 'ALL'">
+            AND USE_AT = #{searchUseAt}
+        </if>
+        ORDER BY 
+        <if test="sortField != null and sortField != ''">
+            <choose>
+                <when test="sortField == 'BBS_ID'">BBS_ID</when>
+                <when test="sortField == 'BBS_NM'">BBS_NM</when>
+                <when test="sortField == 'FRST_REGIST_PNTTM'">FRST_REGIST_PNTTM</when>
+                <otherwise>BBS_ID</otherwise>
+            </choose>
+            <if test="sortOrder != null and sortOrder != ''">
+                <choose>
+                    <when test="sortOrder == 'ASC'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </if>
+        </if>
+        <if test="sortField == null or sortField == ''">
+            FRST_REGIST_PNTTM DESC
+        </if>
+        <if test="pageSize > 0">
+            LIMIT #{pageSize} OFFSET #{firstIndex}
+        </if>
+    </select>
+
+    <!-- 게시판 마스터 총 개수 조회 -->
+    <select id="selectBbsMstListTotCnt" parameterType="egovframework.survey.vo.BbsMstSearchVO" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNBBSMST
+        WHERE 1 = 1
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (BBS_NM LIKE CONCAT('%', #{searchKeyword}, '%') 
+                 OR BBS_INTRCN LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        <if test="searchUseAt != null and searchUseAt != '' and searchUseAt != 'ALL'">
+            AND USE_AT = #{searchUseAt}
+        </if>
+    </select>
+
+    <!-- 게시판 마스터 상세 조회 -->
+    <select id="selectBbsMst" parameterType="string" resultMap="bbsMstResultMap">
+        SELECT 
+            BBS_ID,
+            BBS_NM,
+            BBS_INTRCN,
+            BBS_TY_CODE,
+            BBS_ATTRB_CODE,
+            REPLY_POSBL_AT,
+            FILE_ATCH_POSBL_AT,
+            ATCH_POSBL_FILE_NUMBER,
+            ATCH_POSBL_FILE_SIZE,
+            USE_AT,
+            TMPLAT_ID,
+            CATEGORY_CODE_ID,
+            REPRESENT_IMAGE_USE_AT,
+            REPRESENT_IMAGE_WIDTH,
+            REPRESENT_IMAGE_HEIGHT,
+            MAIN_IMAGE_USE_AT,
+            MAIN_IMAGE_WIDTH,
+            MAIN_IMAGE_HEIGHT,
+            MULTI_IMAGE_USE_AT,
+            MULTI_IMAGE_DISPLAY_NAME,
+            MULTI_IMAGE_MAX_COUNT,
+            MULTI_IMAGE_WIDTH,
+            MULTI_IMAGE_HEIGHT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_PNTTM
+        FROM COMTNBBSMST
+        WHERE BBS_ID = #{bbsId}
+    </select>
+
+    <!-- 게시판 마스터 등록 -->
+    <insert id="insertBbsMst" parameterType="egovframework.survey.vo.BbsMstVO">
+        INSERT INTO COMTNBBSMST (
+            BBS_ID,
+            BBS_NM,
+            BBS_INTRCN,
+            BBS_TY_CODE,
+            BBS_ATTRB_CODE,
+            REPLY_POSBL_AT,
+            FILE_ATCH_POSBL_AT,
+            ATCH_POSBL_FILE_NUMBER,
+            ATCH_POSBL_FILE_SIZE,
+            USE_AT,
+            TMPLAT_ID,
+            CATEGORY_CODE_ID,
+            REPRESENT_IMAGE_USE_AT,
+            REPRESENT_IMAGE_WIDTH,
+            REPRESENT_IMAGE_HEIGHT,
+            MAIN_IMAGE_USE_AT,
+            MAIN_IMAGE_WIDTH,
+            MAIN_IMAGE_HEIGHT,
+            MULTI_IMAGE_USE_AT,
+            MULTI_IMAGE_DISPLAY_NAME,
+            MULTI_IMAGE_MAX_COUNT,
+            MULTI_IMAGE_WIDTH,
+            MULTI_IMAGE_HEIGHT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM
+        ) VALUES (
+            #{bbsId,jdbcType=VARCHAR},
+            #{bbsNm,jdbcType=VARCHAR},
+            #{bbsIntrcn,jdbcType=VARCHAR},
+            #{bbsTyCode,jdbcType=VARCHAR},
+            #{bbsAttrbCode,jdbcType=VARCHAR},
+            #{replyPosblAt,jdbcType=VARCHAR},
+            #{fileAtchPosblAt,jdbcType=VARCHAR},
+            #{atchPosblFileNumber,jdbcType=INTEGER},
+            #{atchPosblFileSize,jdbcType=BIGINT},
+            #{useAt,jdbcType=VARCHAR},
+            #{tmplatId,jdbcType=VARCHAR},
+            #{categoryCodeId,jdbcType=VARCHAR},
+            #{representImageUseAt,jdbcType=VARCHAR},
+            #{representImageWidth,jdbcType=INTEGER},
+            #{representImageHeight,jdbcType=INTEGER},
+            #{mainImageUseAt,jdbcType=VARCHAR},
+            #{mainImageWidth,jdbcType=INTEGER},
+            #{mainImageHeight,jdbcType=INTEGER},
+            #{multiImageUseAt,jdbcType=VARCHAR},
+            #{multiImageDisplayName,jdbcType=VARCHAR},
+            #{multiImageMaxCount,jdbcType=INTEGER},
+            #{multiImageWidth,jdbcType=INTEGER},
+            #{multiImageHeight,jdbcType=INTEGER},
+            #{frstRegisterId,jdbcType=VARCHAR},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!-- 게시판 마스터 수정 -->
+    <update id="updateBbsMst" parameterType="egovframework.survey.vo.BbsMstVO">
+        UPDATE COMTNBBSMST SET
+            BBS_NM = #{bbsNm},
+            BBS_INTRCN = #{bbsIntrcn},
+            BBS_TY_CODE = #{bbsTyCode},
+            BBS_ATTRB_CODE = #{bbsAttrbCode},
+            REPLY_POSBL_AT = #{replyPosblAt},
+            FILE_ATCH_POSBL_AT = #{fileAtchPosblAt},
+            ATCH_POSBL_FILE_NUMBER = #{atchPosblFileNumber},
+            ATCH_POSBL_FILE_SIZE = #{atchPosblFileSize},
+            USE_AT = #{useAt},
+            TMPLAT_ID = #{tmplatId},
+            CATEGORY_CODE_ID = #{categoryCodeId,jdbcType=VARCHAR},
+            REPRESENT_IMAGE_USE_AT = #{representImageUseAt,jdbcType=VARCHAR},
+            REPRESENT_IMAGE_WIDTH = #{representImageWidth,jdbcType=INTEGER},
+            REPRESENT_IMAGE_HEIGHT = #{representImageHeight,jdbcType=INTEGER},
+            MAIN_IMAGE_USE_AT = #{mainImageUseAt,jdbcType=VARCHAR},
+            MAIN_IMAGE_WIDTH = #{mainImageWidth,jdbcType=INTEGER},
+            MAIN_IMAGE_HEIGHT = #{mainImageHeight,jdbcType=INTEGER},
+            MULTI_IMAGE_USE_AT = #{multiImageUseAt,jdbcType=VARCHAR},
+            MULTI_IMAGE_DISPLAY_NAME = #{multiImageDisplayName,jdbcType=VARCHAR},
+            MULTI_IMAGE_MAX_COUNT = #{multiImageMaxCount,jdbcType=INTEGER},
+            MULTI_IMAGE_WIDTH = #{multiImageWidth,jdbcType=INTEGER},
+            MULTI_IMAGE_HEIGHT = #{multiImageHeight,jdbcType=INTEGER},
+            LAST_UPDUSR_ID = #{lastUpdusrId},
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
+        WHERE BBS_ID = #{bbsId,jdbcType=VARCHAR}
+    </update>
+
+    <!-- 게시판 마스터 삭제 -->
+    <delete id="deleteBbsMst" parameterType="string">
+        DELETE FROM COMTNBBSMST WHERE BBS_ID = #{bbsId,jdbcType=VARCHAR}
+    </delete>
+
+    <!-- ===== 게시글 관리 ===== -->
+
+    <!-- 게시글 목록 조회 -->
+    <select id="selectBbsList" parameterType="egovframework.survey.vo.BbsSearchVO" resultMap="bbsResultMap">
+        SELECT 
+            b.NTT_ID,
+            b.BBS_ID,
+            b.NTT_NO,
+            b.NTT_SJ,
+            b.NTT_CN,
+            b.ANSWER_AT,
+            b.PARNTSCTT_NO,
+            b.ANSWER_LC,
+            b.SORT_ORDR,
+            b.RDCNT,
+            b.USE_AT,
+            b.NTCE_AT,
+            b.EXPOSURE_YN,
+            b.ATCH_FILE_ID,
+            b.CATEGORY_CODE,
+            b.FRST_REGISTER_ID,
+            b.NTCRN_NM,
+            b.FRST_REGIST_PNTTM,
+            b.LAST_UPDUSR_ID,
+            b.LAST_UPDT_PNTTM,
+            m.BBS_NM,
+            m.BBS_TY_CODE
+        FROM COMTNBBS b
+        INNER JOIN COMTNBBSMST m ON b.BBS_ID = m.BBS_ID
+        WHERE b.USE_AT = 'Y'
+        <if test="bbsId != null and bbsId != ''">
+            AND b.BBS_ID = #{bbsId}
+        </if>
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (b.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%') 
+                 OR b.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+                 OR b.NTCRN_NM LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        <if test="searchNtceAt != null and searchNtceAt != '' and searchNtceAt != 'ALL'">
+            AND b.NTCE_AT = #{searchNtceAt}
+        </if>
+        <if test="searchExposureYn != null and searchExposureYn != '' and searchExposureYn != 'ALL'">
+            AND b.EXPOSURE_YN = #{searchExposureYn}
+        </if>
+        <if test="searchCategory != null and searchCategory != '' and searchCategory != 'ALL'">
+            AND b.CATEGORY_CODE = #{searchCategory}
+        </if>
+        ORDER BY 
+            b.NTCE_AT DESC,
+        <if test="sortField != null and sortField != ''">
+            <choose>
+                <when test="sortField == 'NTT_ID'">b.NTT_ID</when>
+                <when test="sortField == 'NTT_SJ'">b.NTT_SJ</when>
+                <when test="sortField == 'NTCRN_NM'">b.NTCRN_NM</when>
+                <when test="sortField == 'FRST_REGIST_PNTTM'">b.FRST_REGIST_PNTTM</when>
+                <when test="sortField == 'RDCNT'">b.RDCNT</when>
+                <otherwise>b.NTT_ID</otherwise>
+            </choose>
+            <if test="sortOrder != null and sortOrder != ''">
+                <choose>
+                    <when test="sortOrder == 'ASC'">ASC</when>
+                    <otherwise>DESC</otherwise>
+                </choose>
+            </if>
+        </if>
+        <if test="sortField == null or sortField == ''">
+            b.FRST_REGIST_PNTTM DESC
+        </if>
+        <if test="pageSize > 0">
+            LIMIT #{pageSize} OFFSET #{firstIndex}
+        </if>
+    </select>
+
+    <!-- 게시글 총 개수 조회 -->
+    <select id="selectBbsListTotCnt" parameterType="egovframework.survey.vo.BbsSearchVO" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNBBS b
+        INNER JOIN COMTNBBSMST m ON b.BBS_ID = m.BBS_ID
+        WHERE b.USE_AT = 'Y'
+        <if test="bbsId != null and bbsId != ''">
+            AND b.BBS_ID = #{bbsId}
+        </if>
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (b.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%') 
+                 OR b.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+                 OR b.NTCRN_NM LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        <if test="searchNtceAt != null and searchNtceAt != '' and searchNtceAt != 'ALL'">
+            AND b.NTCE_AT = #{searchNtceAt}
+        </if>
+        <if test="searchExposureYn != null and searchExposureYn != '' and searchExposureYn != 'ALL'">
+            AND b.EXPOSURE_YN = #{searchExposureYn}
+        </if>
+        <if test="searchCategory != null and searchCategory != '' and searchCategory != 'ALL'">
+            AND b.CATEGORY_CODE = #{searchCategory}
+        </if>
+    </select>
+
+    <!-- 게시글 상세 조회 -->
+    <select id="selectBbs" parameterType="map" resultMap="bbsResultMap">
+        SELECT 
+            b.NTT_ID,
+            b.BBS_ID,
+            b.NTT_NO,
+            b.NTT_SJ,
+            b.NTT_CN,
+            b.ANSWER_AT,
+            b.PARNTSCTT_NO,
+            b.ANSWER_LC,
+            b.SORT_ORDR,
+            b.RDCNT,
+            b.USE_AT,
+            b.NTCE_AT,
+            b.EXPOSURE_YN,
+            b.ATCH_FILE_ID,
+            b.CATEGORY_CODE,
+            b.FRST_REGISTER_ID,
+            b.NTCRN_NM,
+            b.PASSWORD,
+            b.FRST_REGIST_PNTTM,
+            b.LAST_UPDUSR_ID,
+            b.LAST_UPDT_PNTTM,
+            m.BBS_NM,
+            m.BBS_TY_CODE
+        FROM COMTNBBS b
+        INNER JOIN COMTNBBSMST m ON b.BBS_ID = m.BBS_ID
+        WHERE b.BBS_ID = #{bbsId,jdbcType=VARCHAR}
+        AND b.NTT_ID = #{nttId,jdbcType=BIGINT}
+        AND b.USE_AT = 'Y'
+    </select>
+
+    <!-- 게시글 등록 -->
+    <insert id="insertBbs" parameterType="egovframework.survey.vo.BbsVO" useGeneratedKeys="true" keyProperty="nttId">
+        INSERT INTO COMTNBBS (
+            BBS_ID,
+            NTT_NO,
+            NTT_SJ,
+            NTT_CN,
+            ANSWER_AT,
+            PARNTSCTT_NO,
+            ANSWER_LC,
+            SORT_ORDR,
+            RDCNT,
+            USE_AT,
+            NTCE_AT,
+            EXPOSURE_YN,
+            ATCH_FILE_ID,
+            CATEGORY_CODE,
+            FRST_REGISTER_ID,
+            NTCRN_NM,
+            PASSWORD,
+            FRST_REGIST_PNTTM
+        ) VALUES (
+            #{bbsId,jdbcType=VARCHAR},
+            #{nttNo,jdbcType=INTEGER},
+            #{nttSj,jdbcType=VARCHAR},
+            #{nttCn,jdbcType=VARCHAR},
+            COALESCE(#{answerAt,jdbcType=VARCHAR}, 'N'),
+            COALESCE(#{parntscttNo,jdbcType=INTEGER}, 0),
+            COALESCE(#{answerLc,jdbcType=INTEGER}, 0),
+            COALESCE(#{sortOrdr,jdbcType=INTEGER}, 0),
+            0,
+            COALESCE(#{useAt,jdbcType=VARCHAR}, 'Y'),
+            COALESCE(#{ntceAt,jdbcType=VARCHAR}, 'N'),
+            COALESCE(#{exposureYn,jdbcType=VARCHAR}, 'Y'),
+            #{atchFileId,jdbcType=VARCHAR},
+            #{nttCategory,jdbcType=VARCHAR},
+            #{frstRegisterId,jdbcType=VARCHAR},
+            #{ntcrnNm,jdbcType=VARCHAR},
+            #{password,jdbcType=VARCHAR},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!-- 게시글 수정 -->
+    <update id="updateBbs" parameterType="egovframework.survey.vo.BbsVO">
+        UPDATE COMTNBBS SET
+            NTT_SJ = #{nttSj},
+            NTT_CN = #{nttCn},
+            NTCE_AT = #{ntceAt},
+            EXPOSURE_YN = #{exposureYn},
+            ATCH_FILE_ID = #{atchFileId,jdbcType=VARCHAR},
+            CATEGORY_CODE = #{nttCategory,jdbcType=VARCHAR},
+            LAST_UPDUSR_ID = #{lastUpdusrId,jdbcType=VARCHAR},
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
+        WHERE NTT_ID = #{nttId,jdbcType=BIGINT}
+    </update>
+
+    <!-- 게시글 삭제 -->
+    <update id="deleteBbs" parameterType="long">
+        UPDATE COMTNBBS SET 
+            USE_AT = 'N',
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
+        WHERE NTT_ID = #{nttId,jdbcType=BIGINT}
+    </update>
+
+    <!-- 조회수 증가 -->
+    <update id="updateRdcnt">
+        UPDATE COMTNBBS SET 
+            RDCNT = RDCNT + 1
+        WHERE BBS_ID = #{bbsId,jdbcType=VARCHAR}
+          AND NTT_ID = #{nttId,jdbcType=INTEGER}
+    </update>
+
+    <!-- 게시글 번호 생성을 위한 최대값 조회 -->
+    <select id="selectMaxNttNo" parameterType="string" resultType="int">
+        SELECT COALESCE(MAX(NTT_NO), 0) + 1
+        FROM COMTNBBS
+        WHERE BBS_ID = #{bbsId,jdbcType=VARCHAR}
+    </select>
+    
+    <!-- 게시글 atchFileId 업데이트 -->
+    <update id="updateBbsAtchFileId">
+        UPDATE COMTNBBS SET 
+            ATCH_FILE_ID = #{param2,jdbcType=VARCHAR}
+        WHERE NTT_ID = #{param1,jdbcType=BIGINT}
+    </update>
+
+    <!-- 공지글 목록 조회 -->
+    <select id="selectNoticeList" parameterType="string" resultMap="bbsResultMap">
+        SELECT 
+            b.NTT_ID,
+            b.BBS_ID,
+            b.NTT_NO,
+            b.NTT_SJ,
+            b.NTT_CN,
+            b.RDCNT,
+            b.NTCE_AT,
+            b.EXPOSURE_YN,
+            b.FRST_REGISTER_ID,
+            b.NTCRN_NM,
+            b.FRST_REGIST_PNTTM,
+            m.BBS_NM
+        FROM COMTNBBS b
+        INNER JOIN COMTNBBSMST m ON b.BBS_ID = m.BBS_ID
+        WHERE b.BBS_ID = #{bbsId,jdbcType=VARCHAR}
+        AND b.NTCE_AT = 'Y'
+        AND b.USE_AT = 'Y'
+        ORDER BY b.FRST_REGIST_PNTTM DESC
+        LIMIT 5
+    </select>
+
+    <!-- ===== 댓글 관련 ===== -->
+
+    <!-- 댓글 목록 조회 -->
+    <select id="selectCommentList" resultMap="commentResultMap">
+        SELECT 
+            COMMENT_NO,
+            NTT_ID,
+            COMMENT_CN,
+            COMMENT_WRITER_ID,
+            COMMENT_WRITER_NM,
+            COMMENT_PASSWORD,
+            USE_AT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_PNTTM
+        FROM COMTNCOMMENT
+        WHERE NTT_ID = #{param2,jdbcType=BIGINT}
+        AND USE_AT = 'Y'
+        ORDER BY FRST_REGIST_PNTTM ASC
+    </select>
+
+    <!-- 댓글 등록 -->
+    <insert id="insertComment" parameterType="egovframework.survey.vo.CommentVO" useGeneratedKeys="true" keyProperty="commentNo">
+        INSERT INTO COMTNCOMMENT (
+            NTT_ID,
+            COMMENT_CN,
+            COMMENT_WRITER_ID,
+            COMMENT_WRITER_NM,
+            COMMENT_PASSWORD,
+            USE_AT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM
+        ) VALUES (
+            #{nttId,jdbcType=BIGINT},
+            #{commentCn,jdbcType=VARCHAR},
+            #{commentWriterId,jdbcType=VARCHAR},
+            #{commentWriterNm,jdbcType=VARCHAR},
+            #{commentPassword,jdbcType=VARCHAR},
+            COALESCE(#{useAt,jdbcType=VARCHAR}, 'Y'),
+            #{frstRegisterId,jdbcType=VARCHAR},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!-- 댓글 수정 -->
+    <update id="updateComment" parameterType="egovframework.survey.vo.CommentVO">
+        UPDATE COMTNCOMMENT SET
+            COMMENT_CN = #{commentCn,jdbcType=VARCHAR},
+            LAST_UPDUSR_ID = #{lastUpdusrId,jdbcType=VARCHAR},
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
+        WHERE COMMENT_NO = #{commentNo,jdbcType=BIGINT}
+    </update>
+
+    <!-- 댓글 삭제 -->
+    <update id="deleteComment" parameterType="int">
+        UPDATE COMTNCOMMENT SET 
+            USE_AT = 'N',
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
+        WHERE COMMENT_NO = #{commentNo,jdbcType=BIGINT}
+    </update>
+
+</mapper> 
