@@ -80,10 +80,10 @@ export default function TinyMCEEditor({
             windowManager: {
               open: (config: {
                 title: string;
-                body: any;
-                buttons: any[];
-                initialData: any;
-                onSubmit: (api: any) => void;
+                            body: unknown;
+            buttons: unknown[];
+            initialData: unknown;
+            onSubmit: (api: unknown) => void;
               }) => void;
               alert: (message: string) => void;
             };
@@ -386,7 +386,7 @@ export default function TinyMCEEditor({
           media_dimensions: false,
           
           // 이미지 업로드 핸들러 - 첨부파일 시스템 활용
-          images_upload_handler: async (blobInfo: any, progress: any, failure: any) => {
+          images_upload_handler: async (blobInfo: unknown, progress: unknown, failure: unknown) => {
             try {
               const formData = new FormData();
               formData.append('files', blobInfo.blob(), blobInfo.filename());

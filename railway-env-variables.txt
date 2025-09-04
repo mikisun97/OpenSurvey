@@ -1,0 +1,11 @@
+# Railway 환경 변수 설정 참조용 파일
+# Railway Dashboard → Variables 탭에서 다음 변수들을 설정하세요
+
+SPRING_PROFILES_ACTIVE=prod
+DATABASE_URL=postgresql://neondb_owner:npg_ofenH5IaNS9v@ep-shy-breeze-a1wtnbt9-pooler.ap-southeast-1.aws.neon.tech/opensurvey?sslmode=require&channel_binding=require
+JWT_SECRET=egovframe!@#OpenSurveyJWTSecretKey2024
+JWT_EXPIRATION=86400
+PORT=8080
+UPLOAD_PATH=/tmp/uploads/
+MAVEN_OPTS=-Xmx512m
+JAVA_TOOL_OPTIONS=-Xmx512m

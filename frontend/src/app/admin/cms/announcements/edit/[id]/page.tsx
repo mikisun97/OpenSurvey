@@ -85,7 +85,7 @@ export default function EditAnnouncementPage() {
   useEffect(() => {
     const checkAuth = async () => {
       const user = await getUserInfo();
-      if (!user || !isAdmin(user)) {
+      if (!user || !isAdmin()) {
         router.push('/login');
         return;
       }

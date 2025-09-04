@@ -1,0 +1,18 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "java -jar backend/target/*.jar"
+healthcheckPath = "/api/test"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+
+[[services]]
+name = "opensurvey-backend"
+source = "backend"
+
+[services.build]
+buildCommand = "cd backend && mvn clean package -DskipTests"
+
+[services.deploy]
+startCommand = "java -jar target/*.jar"

@@ -3,6 +3,16 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   
+  // ESLint 설정 - 빌드 시 경고를 에러로 취급하지 않음
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+  
+  // TypeScript 설정 - 빌드 시 타입 에러 무시하지 않음
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  
   // 개발 환경에서 백엔드 API 프록시 설정
   async rewrites() {
     return [
