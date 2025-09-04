@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -138,14 +137,7 @@ export default function LoginPage() {
             </Button>
           </form>
           <div className="mt-6 text-center text-sm text-gray-600">
-            <p>테스트 계정</p>
-            <p>ID: admin / PW: password</p>
-            <p>ID: user01 / PW: password</p>
-          </div>
-          <div className="mt-4 text-center">
-            <Link href="/register" className="text-sm text-blue-600 hover:underline">
-              계정이 없으신가요? 회원가입
-            </Link>
+            <p>테스트 계정: ID: admin / PW: password</p>
           </div>
         </CardContent>
       </Card>

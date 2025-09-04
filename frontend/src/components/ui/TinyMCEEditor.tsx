@@ -47,7 +47,7 @@ export default function TinyMCEEditor({
   return (
     <div className="tinymce-editor border border-gray-300 rounded-md">
       <Editor
-        apiKey="ef7twyh1x628k9nq5dym8twzit0bzy5c4uu3nbdnilv85p34"
+        apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY || "ef7twyh1x628k9nq5dym8twzit0bzy5c4uu3nbdnilv85p34"}
         value={content}
         onEditorChange={handleEditorChange}
         init={{
